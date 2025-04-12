@@ -135,7 +135,7 @@ public
                     friendlyRangedUnits.add(u);
                 }
             }
-            else if (u.getPlayer() != p.getID()) {
+            else if (!u.getType().isResource) {
                 if (u.getType() == baseType) {
                     enemyBases.add(u);
                 }
@@ -417,8 +417,8 @@ public
      */
     public
             void barracksBehavior(Unit u, Player p, PhysicalGameState pgs) {
-        if (p.getResources() >= lightType.cost + resourcesUsed) {
-            train(u, lightType);
+        if (p.getResources() >= rangedType.cost + resourcesUsed) {
+            train(u, rangedType);
         }
     }
 
@@ -678,6 +678,15 @@ public
 
                 enemiesByDistance.add(enemyWithDistance);
 
+            }
+            Unit enemy = enemiesByDistance.peek().u;
+            int distance = enemiesByDistance.peek().distance;
+            if (enemy.getType() != rangedType && enemy.getAttackRange() >= distance){
+                // move away then attack
+                int fleeDistance = enemy.getAttackRange() - distance + 1;
+                int xTo = (friendlyRanged.getX() - enemy.getX()) > 0 ? 1 * fleeDistance : -1 * fleeDistance;
+                int y = friendlyRanged.getY();
+                move(friendlyRanged, xTo, y);
             }
             attack(friendlyRanged, enemiesByDistance.peek().u);
         }
