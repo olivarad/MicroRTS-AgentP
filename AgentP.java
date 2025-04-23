@@ -135,7 +135,7 @@ public
                     friendlyRangedUnits.add(u);
                 }
             }
-            else if (!u.getType().isResource) {
+            else if ( ! u.getType().isResource) {
                 if (u.getType() == baseType) {
                     enemyBases.add(u);
                 }
@@ -671,26 +671,70 @@ public
             if (enemyUnits.isEmpty()) {
                 return;
             }
+
+            // Find closest enemy and compute average enemy position
             PriorityQueue<UnitAndDistance> enemiesByDistance = new PriorityQueue<>();
+            int sumX = 0, sumY = 0;
+
             for (Unit enemy : enemyUnits) {
-                int distance = calcDistNoSquare(friendlyRanged, enemy);
-                UnitAndDistance enemyWithDistance = new UnitAndDistance(enemy, distance);
-
-                enemiesByDistance.add(enemyWithDistance);
-
+                if (enemy.getAttackRange() > 0)
+                {
+                    int distance = calcDistNoSquare(friendlyRanged, enemy);
+                    enemiesByDistance.add(new UnitAndDistance(enemy, distance));
+                    sumX += enemy.getX();
+                    sumY += enemy.getY();
+                }
             }
-            Unit enemy = enemiesByDistance.peek().u;
-            int distance = enemiesByDistance.peek().distance;
-            if (enemy.getType() != rangedType && enemy.getAttackRange() >= distance){
-                // move away then attack
-                int fleeDistance = enemy.getAttackRange() - distance + 1;
-                int xTo = (friendlyRanged.getX() - enemy.getX()) > 0 ? 1 * fleeDistance : -1 * fleeDistance;
-                int y = friendlyRanged.getY();
-                move(friendlyRanged, xTo, y);
+
+            if (enemiesByDistance.size() > 0)
+            {
+                Unit closestEnemy = enemiesByDistance.peek().u;
+                int distanceToClosest = enemiesByDistance.peek().distance;
+
+                // Calculate average enemy position
+                int avgX = sumX / enemyUnits.size();
+                int avgY = sumY / enemyUnits.size();
+
+                // Determine if we need to flee (if within attack range of closest enemy)
+                if (closestEnemy.getType() != rangedType && closestEnemy.getAttackRange() >= distanceToClosest) {
+                    int fleeDistance = closestEnemy.getAttackRange() - distanceToClosest + 1;
+
+                    // Calculate direction away from average enemy position
+                    int dx = friendlyRanged.getX() - avgX;
+                    int dy = friendlyRanged.getY() - avgY;
+
+                    // Normalize direction
+                    if (dx != 0) {
+                        dx = dx / Math.abs(dx);
+                    }
+                    if (dy != 0) {
+                        dy = dy / Math.abs(dy);
+                    }
+
+                    int xTo = friendlyRanged.getX() + dx * fleeDistance;
+                    int yTo = friendlyRanged.getY() + dy * fleeDistance;
+
+                    move(friendlyRanged, xTo, yTo);
+                }
+
+                // Always attack the closest enemy
+                attack(friendlyRanged, closestEnemy);
             }
-            attack(friendlyRanged, enemiesByDistance.peek().u);
+            // Only non attacking enemy units remain
+            else
+            {
+                for (Unit enemy : enemyUnits) {
+                    if (enemy.getAttackRange() <= 0) {
+                        int distance = calcDistNoSquare(friendlyRanged, enemy);
+                        enemiesByDistance.add(new UnitAndDistance(enemy, distance));
+                    }
+                }
+                if (enemiesByDistance.size() > 0)
+                {
+                    attack(friendlyRanged, enemiesByDistance.peek().u);
+                }
+            }
         }
-
     }
 
     /**
